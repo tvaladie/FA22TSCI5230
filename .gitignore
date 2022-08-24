@@ -51,3 +51,4 @@ local.config.R
 *.tsv
 *.rda
 *.xlsx
+data
