@@ -40,7 +40,7 @@ if(!file.exists('data.R.rdata')){system('R -f data.R')}
 load('data.R.rdata')
 
 #Section 2-----
-
+#GGplot
 ggplot(data = patients, aes(x=anchor_age, fill = gender)) + geom_histogram() +
   geom_vline(xintercept = 65)
 
@@ -48,3 +48,20 @@ table(patients$gender)
 length(unique(patients$subject_id))
 
 # load data ----
+
+#Introduction to dplyr
+Demographics <- group_by(admissions, subject_id) %>%
+  mutate(los = difftime(dischtime,admittime)) %>%
+  summarise(admits = n(),
+            eth = length(unique(ethnicity)),
+            ethnicity_combo = paste(sort(unique(ethnicity)),collapse = ':'),
+            language = tail(language,1),
+            dod = max(deathtime, na.rm=TRUE),
+            los = median(los),
+            numED = length(na.omit(edregtime)))
+
+#Subset of data frames
+#subset(Demographics, eth > 1)
+#table(Demographics$eth)
+
+ggplot(data = Demographics, aes(x=admits)) + geom_histogram() #Distribution of admits by pt
