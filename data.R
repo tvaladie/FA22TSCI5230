@@ -52,21 +52,15 @@ UnzippedData <- unzip (Zipped_Data, exdir = "data") %>% grep('gz',.,value = TRUE
 grep('gz',UnzippedData) #position in the vector where the pattern "gz" has been found
 grep('gz',UnzippedData, value=TRUE) #return of the actual strings
 
-Transfers<-import(UnzippedData[3],fread=FALSE)
+
 TableNames <- basename(UnzippedData) %>% path_ext_remove() %>% path_ext_remove()
 TableNames
-assign(TableNames[3],import(UnzippedData[3],fread=FALSE))
+
 
 for(ii in seq_along(TableNames)){
   assign(TableNames[ii],import(UnzippedData[ii],format = 'csv'),inherits = TRUE)}
 
-mapply(function(xx,yy){
-  c(length(xx),length(yy))},TableNames,UnzippedData)
+#mapply(function(xx,yy)
+#  assign(xx,import(yy,format = 'CSV'),inherits=TRUE),TableNames,UnzippedData)
 
-mapply(function(xx,yy){
-  assign(TableNames[ii],import(UnzippedData[ii],format = 'csv'),inherits = TRUE)},TableNames,UnzippedData)
-
-mapply(function(xx,yy)
-  assign(xx,import(yy,format = 'CSV'),inherits=TRUE),TableNames,UnzippedData)
-
-save(list = TableNames, file = 'working_script.rdata')
+save(list = TableNames, file = 'data.R.rdata')
