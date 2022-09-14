@@ -65,3 +65,66 @@ Demographics <- group_by(admissions, subject_id) %>%
 #table(Demographics$eth)
 
 ggplot(data = Demographics, aes(x=admits)) + geom_histogram() #Distribution of admits by pt
+
+#Demographics final
+intersect(names(Demographics),names(patients))
+
+#Inner join only keeps rows found in both data sets. Outer join only keeps unique values
+#Find patients listed in one data set but not the other
+intersect(Demographics$subject_id,patients$subject_id) #Should have 100 results if all are similar
+setdiff(Demographics$subject_id,patients$subject_id) #setdiff is opposite of intersect
+#Could then reverse either of these to ensure it is correct for both sides
+setdiff(patients$subject_id,Demographics$subject_id)
+
+#What about dod which is empty for patients?
+setdiff(Demographics$dod,patients$dod) #Only get unique values present for L side compared to R
+
+Demographics1 <- left_join(Demographics, select(patients, -dod), by = 'subject_id')
+
+#patient = subset(patients, select = -c(dod))
+#paste0(letters,LETTERS, collapse = '---')
+
+############################Vanc/Zosyn study data
+# build list of keywords
+kw_abx <- c("vanco", "zosyn", "piperacillin", "tazobactam", "cefepime", "meropenam", "ertapenem", "carbapenem", "levofloxacin")
+kw_lab <- c("creatinine")
+kw_aki <- c("acute renal failure", "acute kidney injury", "acute kidney failure", "acute kidney", "acute renal insufficiency")
+kw_aki_pp <- c("postpartum", "labor and delivery")
+
+
+# search for those keywords in the tables to find the full label names
+# remove post partum from aki in last line here
+# may need to remove some of the lab labels as well (pending)
+label_abx <- grep(paste0(kw_abx, collapse = '|'), d_items$label, ignore.case = T, value = T, invert = F)
+label_lab <- grep(paste0(kw_lab, collapse = '|'), d_labitems$label, ignore.case = T, value = T, invert = F)
+label_aki <- grep(paste0(kw_aki, collapse = '|'), d_icd_diagnoses$long_title, ignore.case = T, value = T, invert = F)
+label_aki <- grep(paste0(kw_aki_pp, collapse = '|'), label_aki, ignore.case = T, value = T, invert = T)
+
+
+# use dplyr filter to make tables with the item_id for the keywords above
+item_ids_abx <- d_items %>% filter(label %in% label_abx)
+item_ids_lab <- d_labitems %>% filter(label %in% label_lab)
+item_ids_aki <- d_icd_diagnoses %>% filter(long_title %in% label_aki)
+
+subset(item_ids_abx, category == 'Antibiotics') #Only selects rows with category of Antibiotics
+subset(item_ids_abx, category == 'Antibiotics') %>%
+  left_join(inputevents, by = 'itemid') #By using subset first in left_join, starting off
+#by only selecting rows with antibiotics, and then pulling inputevents data for those
+#patients that received the antibiotics with our specified IDs
+
+Antibiotics <- subset(item_ids_abx, category == 'Antibiotics') %>%
+  left_join(inputevents, by = 'itemid')
+
+grep('N17', diagnoses_icd$icd_code, value = T) #ICD codes found within the dataset
+grep('^548|^N17', diagnoses_icd$icd_code, value=T) #Either 548... or N17... values
+#within the diagnosis_icd$icd_code data set
+grepl('^548|^N17', diagnoses_icd$icd_code) #True/False for each row whether it contains value
+subset(diagnoses_icd,grepl('^548|^N17',icd_code)) #Pulls only the rows that have ICD code of interest
+Akidiagnoses_icd <- subset(diagnoses_icd,grepl('^548|^N17',icd_code))
+
+Cr_labevents <- subset(item_ids_lab, fluid == "Blood") %>%
+  left_join(labevents, by = 'itemid') #Filter only blood Cr and match to lab events
+
+grepl(paste(kw_abx, collapse='|'),emar$medication)
+subset(emar,grepl(paste(kw_abx, collapse='|'),medication,ignore.case = T))$event_txt%>%
+  table()%>%sort() #Filter emar by antibiotic administration with individual event txt
