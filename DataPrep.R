@@ -128,3 +128,28 @@ Cr_labevents <- subset(item_ids_lab, fluid == "Blood") %>%
 grepl(paste(kw_abx, collapse='|'),emar$medication)
 subset(emar,grepl(paste(kw_abx, collapse='|'),medication,ignore.case = T))$event_txt%>%
   table()%>%sort() #Filter emar by antibiotic administration with individual event txt
+
+#Did not finish: emar_abx <- subset(emar, grepl(paste(kw_abx, collapse = '|'), medication, ignore.case = T))
+
+#Grouping of tables by Vanc, Zosyn or other
+Antibiotics_Groupings<-group_by(Antibiotics,hadm_id) %>%
+  summarise(Vanc = 'Vancomycin' %in% label, Zosyn = any(grepl('Piperacillin',label)),
+            Other = length(grep('Piperacillin|Vancomycin',label,val=TRUE,invert = TRUE))>0,
+            N = n(),
+            Exposure1 = case_when(!Vanc ~ 'Other',
+                                  Vanc&Zosyn ~ 'Vanc & Zosyn',
+                                  Other ~ "Vanc & Other",
+                                  !Other ~ "Vanc",
+                                  TRUE ~ 'UNDEFINED'),
+            #Debug = {browser();TRUE})
+#sapply(st,function(xx)){between()}
+
+#Create Exposure 2 that uses different logic. Instead of using proposed shortcuts,
+#Use 'Vanc and no Zosyn and no other" doing them all explicity. So as below
+#Vanc & !Zosyn & !Other ~ 'Vanc'
+#Goal is to show that the long way does match the shorthand we've done
+#sapply takes a vector or a list and performs function on each element of the list
+
+group_by(Antibiotics_Groupings,Vanc,Zosyn,Other) %>%
+  summarise(N=n())
+
