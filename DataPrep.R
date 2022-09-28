@@ -31,7 +31,9 @@ library(GGally);
 library(pander); # format tables
 library(printr); # set limit on number of lines printed
 library(broom); # allows to give clean dataset
-library(dplyr); #add dplyr library
+library(dplyr);
+library(tidyr);
+library(purrr);
 
 options(max.print=42);
 panderOptions('table.split.table',Inf); panderOptions('table.split.cells',Inf);
@@ -140,7 +142,7 @@ Antibiotics_Groupings<-group_by(Antibiotics,hadm_id) %>%
                                   Vanc&Zosyn ~ 'Vanc & Zosyn',
                                   Other ~ "Vanc & Other",
                                   !Other ~ "Vanc",
-                                  TRUE ~ 'UNDEFINED'),
+                                  TRUE ~ 'UNDEFINED'),)
             #Debug = {browser();TRUE})
 #sapply(st,function(xx)){between()}
 
@@ -150,6 +152,69 @@ Antibiotics_Groupings<-group_by(Antibiotics,hadm_id) %>%
 #Goal is to show that the long way does match the shorthand we've done
 #sapply takes a vector or a list and performs function on each element of the list
 
+#Not using shortcut
+#1
+#sapply(Antibiotics_Groupings,summarise,Vanc'True')
+
+#Antibiotics_Groupings %>% if(Vanc='FALSE',Zosyn='FALSE',Other='TRUE' %>% summarise(N=n()),)
+
+#Antibiotics_Groupings %>% summarise(n=(sum(Vanc='FALSE',Zosyn='FALSE',Other='TRUE')))
+#summary(Antibiotics_Groupings)
+
+#Antibiotics_Groupings %>% grepl(paste(Other='True'))
+
 group_by(Antibiotics_Groupings,Vanc,Zosyn,Other) %>%
   summarise(N=n())
 
+#sapply(st, function(xx)){between()}
+
+#9-28
+
+Admission_scaffold <- admissions %>% select(hadm_id, admittime, dischtime) %>%
+  transmute(hadm_id = hadm_id,
+            ip_date = map2(as.Date(admittime), as.Date(dischtime), seq, by = "1 day"))%>%
+  unnest(ip_date)
+
+#Grep returns a value from a table, grepl (l = logical) puts it as a true/false
+Antibiotics_dates <- Antibiotics %>%
+    transmute(hadm_id = hadm_id,
+              group = case_when('Vancomycin' == label ~ 'Vanc',
+                                grepl('Piperacillin',label) ~ 'Zosyn',
+                                TRUE ~ 'Other'),
+              starttime = starttime,
+              endtime = endtime) %>% unique() %>%
+  subset(!is.na(starttime) & !is.na(endtime)) %>%
+  transmute(hadm_id = hadm_id,
+            ip_date = {oo <- try(map2(as.Date(starttime), as.Date(endtime), seq, by = '1 day'));
+            if(is(oo, 'try-error'))browser()
+            oo},
+            group = group) %>%
+  unnest(ip_date) %>% unique()
+
+Antibiotics_dates <- split(Antibiotics_dates, Antibiotics_dates$group)
+
+#names(Antibiotics_dates$Vanc)[3]<- 'Vanc' #Within Vanc set, changes column name to Vanc
+
+#function(xx) does each of them in turn
+
+Antibiotics_dates <- sapply(names(Antibiotics_dates), function(xx){
+  names(Antibiotics_dates[[xx]])[3] <- xx
+  Antibiotics_dates[[xx]]
+  },simplify = FALSE) %>%
+  Reduce(left_join,.,Admission_scaffold)
+
+#mutate(Antibiotics_dates,Other = if_else(is.na(Other),'',Other),
+#       Vanc = coalesce(Vanc,'')
+#       ) %>% View()
+mutate(Antibiotics_dates,
+       across(all_of(c('Other','Vanc','Zosyn')),~coalesce(.x,'')),
+       Exposure = paste(Vanc, Zosyn, Other)) %>%
+  select(hadm_id, Exposure) %>% unique() %>%
+  pull(Exposure) %>% table()
+
+
+# Combined into 1 table
+# Reduce(left_join, Antibiotics_dates) %>% View()
+# Also including times where people have no abx
+# Reduce(left_join, Antibiotics_dates, Admission_scaffold) %>% View()
+#subset is for rows, select is for columns
