@@ -1,6 +1,6 @@
 #'---
 #' title: "TSCI 5230: Introduction to Data Science"
-#' author: 'Shiyu Li'
+#' author: 'Charles Valadie'
 #' abstract: |
 #'  | Provide a summary of objectives, study design, setting, participants,
 #'  | sample size, predictors, outcome, statistical analysis, results,
@@ -34,6 +34,7 @@ library(broom); # allows to give clean dataset
 library(dplyr);
 library(tidyr);
 library(purrr);
+library(table1);
 
 options(max.print=42);
 panderOptions('table.split.table',Inf); panderOptions('table.split.cells',Inf);
@@ -211,6 +212,67 @@ mutate(Antibiotics_dates,
        Exposure = paste(Vanc, Zosyn, Other)) %>%
   select(hadm_id, Exposure) %>% unique() %>%
   pull(Exposure) %>% table()
+
+#10/5 Class
+#Identify the first date pt administered Vanc and Zosyn
+Cr_labevents2 <- Antibiotics_dates %>%
+  group_by(hadm_id) %>%
+  summarise(date_Vanc_Zosyn = min(ip_date[!is.na(Vanc) & !is.na(Zosyn)])) %>%
+  subset(!is.infinite(date_Vanc_Zosyn)) %>%
+  left_join(Cr_labevents,.)%>%
+  subset(!is.na(hadm_id)) %>%
+  arrange(hadm_id, charttime) %>%
+  group_by(hadm_id) %>%
+  mutate(Vanc_Zosyn = !all(is.na(date_Vanc_Zosyn)))
+
+#subset(Cr_labevents2, !no_Vanc_Zosyn) %>% ggplot(aes(x=centered, y=valuenum, group=hadm_id))+
+  #geom_line()+
+  #geom_point(aes(col=after_Vanc_Zosyn))
+
+Cr_labevents$charttime - Cr_labevents$date_Vanc_Zosyn %>% na.omit() %>% head()
+
+#subset is for rows, select is for columns
+#Join all of the tables (demographics, Cr_labevents2 via admissions table)
+#together to get all of our variables in the same place
+
+Analysis_Data <- left_join(Cr_labevents2,Demographics1)
+
+ggplot(Analysis_Data, aes(x= Vanc_Zosyn, y = valuenum)) +
+  geom_violin()+
+  geom_boxplot()
+
+paired_analysis <- c('valuenum', 'admits', 'flag', 'Vanc_Zosyn')
+
+#Diagonal is distribution of each variable
+Analysis_Data[,paired_analysis] %>% ggpairs()
+
+Analysis_Data[,paired_analysis] %>% ggpairs(aes(col=Vanc_Zosyn))
+
+#Table1 usually the first table to show in a table so why it's called table1
+table1(~valuenum+admits+flag+anchor_age+gender | Vanc_Zosyn, data=Analysis_Data,
+       render.continuous = my.render.cont())
+
+#Example of a formula you can write in order to do your own renders
+my.render.cont <- function(x) {
+  with(stats.default(Analysis_Data$anchor_age),
+       sprintf("%0.2f (%0.1f)", MEAN, SD))
+}
+#'with' helps use an object (like a data frame but does not have to be) temporarily
+#to get a value without transforming the data frame
+
+table1(strata, labels, groupspan=c(1, 3, 1), render.continuous=my.render.cont)
+
+View(stats.default(Analysis_Data$anchor_age))
+
+sprintf('hello')
+#% says this is where a placeholder begins, then after the decimal is how much to
+#round it to
+sprintf('the mean is %0.1f', 6.598)
+#output is 'the mean is 6.6'
+
+#One line cheat sheet for how to do any kind of string formatting. Also present
+#within Python, C, java, etc
+sprintf('the mean is %0.1f. The SD is %d. The string is %s. The percentage is %0.1f%%', 6.598, 8, 'string', 25)
 
 
 # Combined into 1 table
