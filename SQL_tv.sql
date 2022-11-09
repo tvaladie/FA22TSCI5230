@@ -162,6 +162,6 @@ FROM q4
 LEFT JOIN q6 ON q4.hadm_id = cast(q6.hadm_id AS bigint)
 AND q4.day = q6.charttime
 
-
+#
 
 
