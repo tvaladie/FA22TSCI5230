@@ -52,3 +52,7 @@ local.config.R
 *.rda
 *.xlsx
 data
+local_config.r
+*.rds
+*.pickle
+*.sql

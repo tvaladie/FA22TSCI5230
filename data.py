@@ -38,11 +38,12 @@ assert ProgressBar.n == int(SizeInBytes), 'Download failed'
 to_unzip = zipfile.ZipFile(DownloadPath)
 
 #In R, a vector is most similar to a list. In R, a list is most similar to a dictionary
-dd = []
+dd = {}
 for ii in to_unzip.namelist():
   if ii.endswith('csv.gz'):
     dd[os.path.split(ii)[1].replace('.csv.gz','')] = pd.read_csv(to_unzip.open(ii),compression = 'gzip',low_memory=False)
-dd.keys()
+    
+dd.keys() #returns the names
 
 pickle.dump(dd,file=open('data.pickle','wb'));
 
