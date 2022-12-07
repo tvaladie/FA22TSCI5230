@@ -4,6 +4,15 @@ import pandas as pd
 import numpy as np
 import os
 import pickle
+import dfply
+from dfply import * #Takes all of the functions within dfply and loads them into environment to keep you from having to put "dfply." before commands
+
+#Decorator - Creates a wrap function around built in "to_datetime" function.
+#Seems like it's just returning same function using pandas(pd), however it is internally 
+#converting it to a format we can work with directly.
+@make_symbolic
+def to_datetime(series, infer_datetime_format=True):
+    return pd.to_datetime(series, infer_datetime_format=infer_datetime_format)
 
 #Ensure staged data exists
 if not os.path.exists('data.pickle'): # if the file data.pickle does not exist, run data.py then read file
@@ -17,22 +26,35 @@ dd = pickle.load(open('data.pickle', 'rb'))
 
 #Creat table: demographics FROM admissions, patients
 demographics = dd['admissions'].copy()
+demographics['deathtime'] = pd.to_datetime(demographics['deathtime'])
+demographics['admittime'] = pd.to_datetime(demographics['admittime'])
+demographics['dischtime'] = pd.to_datetime(demographics['dischtime'])
 
 patients = dd['patients'].copy().drop('dod', axis = 1)
 
 #Create LOS variable
-demographics['LOS'] = (pd.to_datetime(demographics['dischtime']) - 
-  pd.to_datetime(demographics['admittime']))/np.timedelta64(1,'D')
+demographics['LOS'] = (demographics['dischtime'] - 
+ demographics['admittime'])/np.timedelta64(1,'D')
 
 demographics1 = demographics.groupby('subject_id').agg(admits = ('subject_id','count'),
   eth = ('ethnicity','nunique'),
   ethnicity_combo = ('ethnicity',lambda xx: ':'.join(sorted(list(set(xx))))),
   language = ('language','last'),
-  dod = ('deathtime',lambda xx: max(pd.to_datetime(xx))),
+  dod = ('deathtime',lambda xx: 'max'),
   LOS = ('LOS', np.median),
   numED = ('edregtime',lambda xx: xx.notnull().sum())).reset_index(drop = False).\
   merge(patients, on = 'subject_id')
 
+#12/7 Using dfply to produce same results as above lines
+#'>>' is equivalent to piping '%>%' in R
+#'''demographics1a = demographics >> group_by(X.subject_id) >> \
+#  mutate(subject_id_2 = X.subject_id) >> \
+#  summarize(admits = X.subject_id_2.count(),
+#  eth = X.ethnicity.nunique(),
+#  language = last(X.language),
+  #dod = max(X.deathtime),
+#  )
+  
 #11/30
 # Mapping the variables.
 
@@ -104,3 +126,12 @@ abx_dates = admissions_scaffold.merge(abx_dates[abx_dates['group'] == 'Zosyn'][[
 abx_dates['ip_dates'] = pd.to_datetime(abx_dates['ip_dates']).dt.date
 abx_dates.merge(cr_labevents, on = ['hadm_id','ip_dates'], how = 'left')
 analysis_data = abx_dates.merge(cr_labevents, on = ['hadm_id','ip_dates'], how = 'left').fillna(method='ffill',axis=1)
+
+#Install dfply package for python from within R
+#reticulate::py_install('dfply')
+#May not install within python. For this can also use pip as below:
+#How to install something in Python if you're not sure which environment R/Reticulate are going to put it in:
+#import pip;
+#pip.main(['install','PACKAGENAME']) ...where PACKAGENAME is the package you want. Today it's 'dfply'
+
+#12/7 Using plots from Python

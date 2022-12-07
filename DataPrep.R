@@ -36,6 +36,7 @@ library(tidyr);
 library(purrr);
 library(table1);
 library(reticulate);
+library(rio)
 
 options(max.print=42);
 panderOptions('table.split.table',Inf); panderOptions('table.split.cells',Inf);
@@ -244,6 +245,12 @@ ggplot(Analysis_Data, aes(x= Vanc_Zosyn, y = valuenum)) +
 
 paired_analysis <- c('valuenum', 'admits', 'flag', 'Vanc_Zosyn')
 
+#Example of a formula you can write in order to do your own renders
+my.render.cont <- function(x) {
+  with(stats.default(Analysis_Data$anchor_age),
+       sprintf("%0.2f (%0.1f)", MEAN, SD))
+}
+
 #Diagonal is distribution of each variable
 Analysis_Data[,paired_analysis] %>% ggpairs()
 
@@ -253,15 +260,10 @@ Analysis_Data[,paired_analysis] %>% ggpairs(aes(col=Vanc_Zosyn))
 table1(~valuenum+admits+flag+anchor_age+gender | Vanc_Zosyn, data=Analysis_Data,
        render.continuous = my.render.cont())
 
-#Example of a formula you can write in order to do your own renders
-my.render.cont <- function(x) {
-  with(stats.default(Analysis_Data$anchor_age),
-       sprintf("%0.2f (%0.1f)", MEAN, SD))
-}
 #'with' helps use an object (like a data frame but does not have to be) temporarily
 #to get a value without transforming the data frame
 
-table1(strata, labels, groupspan=c(1, 3, 1), render.continuous=my.render.cont)
+#table1(strata, labels, groupspan=c(1, 3, 1), render.continuous=my.render.cont)
 
 View(stats.default(Analysis_Data$anchor_age))
 
@@ -280,4 +282,6 @@ sprintf('the mean is %0.1f. The SD is %d. The string is %s. The percentage is %0
 # Reduce(left_join, Antibiotics_dates) %>% View()
 # Also including times where people have no abx
 # Reduce(left_join, Antibiotics_dates, Admission_scaffold) %>% View()
-#subset is for rows, select is for columns
+#subset is for rows, select is for
+
+export(Analysis_Data,file.path('data','Analysis_Data_R.tsv'))
