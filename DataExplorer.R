@@ -15,3 +15,4 @@ create_report(data) #Creates static report (html by default) using DataExplorer
 data_bin <- binarize(data)
 data_cor <- correlate(data_bin, target = data_bin$value)
 View(data_cor)
+plot_correlation_funnel(data)
